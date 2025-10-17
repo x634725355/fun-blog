@@ -2,6 +2,7 @@
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineNuxtConfig({
+  compatibilityDate: '2025-07-15',
   modules: ['@pinia/nuxt', '@nuxt/ui', '@vueuse/nuxt', "nitro-cloudflare-dev"],
   devtools: { enabled: true },
 
@@ -10,15 +11,6 @@ export default defineNuxtConfig({
   },
 
   css: ['~/assets/css/main.css'],
-
-  nitro: {
-    preset: "cloudflare_module",
-
-    cloudflare: {
-      deployConfig: true,
-      nodeCompat: true
-    }
-  },
   app: {
     pageTransition: { name: 'page', mode: 'out-in' },
     layoutTransition: { name: 'slide', mode: 'out-in' },
@@ -32,5 +24,4 @@ export default defineNuxtConfig({
     },
   },
   sourcemap: false,
-  compatibilityDate: '2024-07-03',
 })
