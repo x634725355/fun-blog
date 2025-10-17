@@ -9,6 +9,7 @@
     "pro": "cross-env NUXT_APP_ENV=pro nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
+    "deploy": "pnpm run build-pro && wrangler deploy",
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
