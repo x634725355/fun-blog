@@ -12,7 +12,7 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
 
   nitro: {
-    preset: "cloudflare-pages",
+    preset: "cloudflare_module",
 
     cloudflare: {
       deployConfig: true,
@@ -29,8 +29,6 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       APP_ENV: process.env.NUXT_APP_ENV || 'dev',
-      TURN_ID: process.env.TURN_ID,
-      TURN_SECRET: process.env.TURN_SECRET,
     },
   },
   sourcemap: false,
