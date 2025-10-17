@@ -6,7 +6,7 @@ interface Router {
 
 const router = ref<Router[]>([
   { path: '/mobile', name: '首页' },
-  { path: '/mobile/RTC', name: 'RTC通话' },
+  // { path: '/mobile/RTC', name: 'RTC通话' },
   { path: '/mobile/upload', name: '上传文件' },
   { path: '/mobile/show-r2', name: '文件展示' },
 ])
