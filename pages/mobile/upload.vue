@@ -47,6 +47,7 @@ async function listGet() {
 async function clickHandle(): Promise<any> {
   load.value = true
   if (!file.value) { return load.value = false }
+
   await uploadR2(file.value, `${prefixPath.value}${filePath.value}`).catch(() => { load.value = false })
   load.value = false
   toast.add({ color: 'primary', title: '上传成功' })
@@ -85,7 +86,7 @@ onMounted(() => {
     <div class="p-2 h-full flex flex-col overflow-auto">
       <div class="mb-10">
         <USelect v-model="prefixPath" class="w-1/3 mr-2 z-10" :items="catalogue" />
-        <UInput v-model="filePath" placeholder="文件目录" />
+        <UInput v-model="filePath" placeholder="文件目录(格式/xxx)" />
       </div>
       <div>
         <UInput ref="uploadRef" class="mb-1" type="file" size="xl" icon="i-heroicons-folder" @change="fileChange" />
