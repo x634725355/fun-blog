@@ -47,7 +47,7 @@ async function listGet() {
 async function clickHandle(): Promise<any> {
   load.value = true
   if (!file.value) { return load.value = false }
-  await uploadR2(file.value, `${prefixPath.value}/${filePath.value}`).catch(() => { load.value = false })
+  await uploadR2(file.value, `${prefixPath.value}${filePath.value}`).catch(() => { load.value = false })
   load.value = false
   toast.add({ color: 'primary', title: '上传成功' })
   file.value = null
