@@ -1,0 +1,60 @@
+---
+description: fun-blog（csc3fun）项目总规则 — 技术栈、目录、环境与编码约定
+alwaysApply: true
+---
+
+# fun-blog 项目总规则
+
+## 技术栈与运行时
+
+- **框架**：Nuxt 4（Vue 3 `<script setup>` + TypeScript）、Vite 7、开发端口 **7777**（见 `nuxt.config.ts`）。
+- **UI**：Nuxt UI（`UApp` 包裹应用）、Tailwind CSS 4（`@tailwindcss/vite`，全局样式 `assets/css/main.css`）。
+- **状态**：Pinia（`@pinia/nuxt`）。
+- **工具库**：VueUse、RxJS（WebRTC/媒体流相关）、D3（可视化）、Socket.IO Client、Yup。
+- **服务端 / 部署**：Nitro 预设 **cloudflare_module**（`nitro-cloudflare-dev`）；生产构建产物通过 **Wrangler** 部署（`wrangler.jsonc`，`pnpm deploy` = build-pro + wrangler deploy）。
+
+## 环境与脚本
+
+- 环境由 **`NUXT_APP_ENV`** 区分（`dev` / `pro`），运行时读取 `useRuntimeConfig().public.APP_ENV`。
+- 常用命令：**`pnpm dev`**、**`pnpm build-dev`** / **`pnpm build-pro`**、**`pnpm deploy`**。包管理器固定 **pnpm**（见 `package.json` 的 `packageManager`）。
+
+## 目录与职责
+
+| 路径 | 用途 |
+|------|------|
+| `pages/` | 文件系统路由；移动端相关在 `pages/mobile/` |
+| `components/` | Vue 组件；布局如 `components/layout/LayoutMobile.vue` |
+| `composables/` | 可组合函数；对外 API 封装在 `composables/api/`，在 `composables/index.ts` 中按需 re-export |
+| `server/api/` | Nitro 服务端路由（`defineEventHandler`） |
+| `utils/` | 纯函数与 RxJS 工具（含 `utils/rxjs/`） |
+| `types/` | 类型与常量声明 |
+| `RTC/` | 实时通话相关页面与路由 |
+
+复用项目已有模块（如 `useMyRequest`、`get`/`post`/`clientGet`、R2 相关 `dataDisplayApi`），避免重复造轮子。
+
+## HTTP 与后端地址
+
+- 统一通过 **`composables/useMyRequest.ts`**：`useBaseURL()` 根据 `APP_ENV` 指向外部 Worker/API（当前为 `https://r2-worker.csc3.fun`）。
+- 页面内列表类请求优先用封装好的 **`get` / `post` / `clientGet` / `clientPost`** 等，保持 `baseURL`、错误处理一致。
+- 静态资源/CDN 域名若使用 **`store.csc3.fun`** 等，与现有页面保持一致。
+
+## Vue / Nuxt 约定
+
+- 新页面/组件默认 **`<script lang="ts" setup>`**。
+- 布局与过渡：根级使用 `NuxtLayout`、`NuxtPage`；全局过渡名称 **`page`** / **`slide`**（已在 `nuxt.config.ts` 配置）。
+- 自动导入：优先使用 Nuxt 自动导入的 `ref`、`computed`、`useRoute` 等，勿在无必要时重复包装。
+
+## 样式
+
+- 优先 **Tailwind 工具类**；组件级样式用 `<style scoped>`。移动端布局注意现有 **`LayoutMobile`** 的宽度约定（如 `max-sm` / `680px`）。
+
+## ESLint（@antfu/eslint-config）
+
+- **单引号**、**缩进 2**；**`curly`: 所有分支必须加大括号**。
+- 允许 `console.log` / `warn` / `error` 等，禁止其他 `console.*` 方法。
+- Vue：`vue/require-v-for-key` 与 `vue/valid-v-for` 已关闭，列表渲染按现有代码风格处理。
+
+## AI / 协作约束
+
+- 改动聚焦需求：**不**顺带大规模重构、**不**擅自新增与用户无关的文档文件。
+- 修改后按项目习惯可用 **`pnpm` + ESLint** 自检（若仓库已有 lint 脚本再运行；当前以 `eslint.config.mjs` 为准）。

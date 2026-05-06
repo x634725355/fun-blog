@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import Footer from './Footer.vue'
+// import Footer from './Footer.vue'
 
 const route = useRoute()
 const isOpen = ref()
@@ -34,7 +34,7 @@ const showMenu = route.name !== 'mobile'
           <slot />
         </div>
       </div>
-      <Footer />
+      <!-- <Footer /> -->
     </div>
   </div>
 </template>
