@@ -125,11 +125,14 @@
 
 ---
 
-## 9. 实现阶段待细化（非阻塞）
+## 9. 实现说明（已落地）
 
-- R2 前缀常量是否在仓库中单处定义并与 Worker 侧校验一致。
-- D1 migration 文件命名与本地 `wrangler d1` 流程。
-- 文件类记录在「上传成功、D1 写入失败」时的补偿策略（重试或提示用户重新提交）。
+- **R2 前缀常量**：`constants/mobile-records.ts` 中 `RECORDS_R2_PREFIX`（默认 `records/`），服务端创建文件类记录时校验 `r2_key` 前缀。
+- **D1 迁移**：`d1/migrations/0001_records.sql`；`wrangler.jsonc` 已为绑定 `DB` 配置 `migrations_dir: "d1/migrations"`。应用到远程库示例：
+  - `pnpm exec wrangler d1 migrations apply csc3 --remote`（以你本地 wrangler 登录与库名为准）。
+- **Nitro 接口**：`GET/POST /api/records`、`DELETE /api/records/:id`（见 `server/api/`）。
+- **页面**：`/mobile/record-timeline`（`pages/mobile/record-timeline.vue`），菜单入口见 `components/Menu.vue`。
+- **上传失败补偿**：若 `uploadR2` 成功而登记 D1 失败，用户需手动删除 R2 孤儿对象或重试登记（与文档「非阻塞」一致，可后续加幂等补偿接口）。
 
 ---
 
@@ -138,3 +141,4 @@
 | 日期 | 变更 |
 |------|------|
 | 2026-05-06 | 初稿：头脑风暴收口 + **`limit` 默认 50** 写入 |
+| 2026-05-08 | 实现：D1 表、Nitro API、`record-timeline` 页面、Wrangler `migrations_dir`、文档第 9 节更新 |

@@ -13,7 +13,8 @@
     {
       "binding": "DB",
       "database_name": "csc3",
-      "database_id": "e1dc6be4-ea41-4540-932f-d52d7c8806c2"
+      "database_id": "e1dc6be4-ea41-4540-932f-d52d7c8806c2",
+      "migrations_dir": "d1/migrations"
     }
   ]
 }
