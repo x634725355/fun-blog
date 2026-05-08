@@ -4,6 +4,10 @@ import { RECORDS_R2_PREFIX, RECORDS_STORE_PUBLIC_BASE } from '~/constants/mobile
 
 definePageMeta({ ssr: false })
 
+const route = useRoute()
+/** 仅当 URL 带 `?time=1` 时展示时间线列表 */
+const showTimeline = computed(() => route.query.time === '1')
+
 const toast = useToast()
 
 const textDraft = ref('')
@@ -158,9 +162,11 @@ function publicUrl(key: string) {
   return `${RECORDS_STORE_PUBLIC_BASE}${key}`
 }
 
-onMounted(() => {
-  loadFirst()
-})
+watch(showTimeline, (show) => {
+  if (show) {
+    loadFirst()
+  }
+}, { immediate: true })
 </script>
 
 <template>
@@ -191,7 +197,7 @@ onMounted(() => {
         </p> -->
       </div>
 
-      <div class="flex flex-col gap-3 flex-1">
+      <div v-if="showTimeline" class="flex flex-col gap-3 flex-1">
         <div class="flex justify-between items-center">
           <span class="font-medium">时间线</span>
           <UButton size="sm" variant="ghost" :loading="listLoad" @click="loadFirst">

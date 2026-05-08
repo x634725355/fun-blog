@@ -1,5 +1,5 @@
 -- 移动端记录时间线：D1 表 records（见 docs/mobile-record-timeline.md）
-
+-- npx wrangler d1 execute csc3 --remote --file=./d1/migrations/0001_records.sql
 CREATE TABLE IF NOT EXISTS records (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   kind TEXT NOT NULL CHECK (kind IN ('text', 'file')),
