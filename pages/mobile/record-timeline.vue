@@ -186,9 +186,9 @@ onMounted(() => {
         <UButton :loading="fileLoad" :disabled="!file" @click="submitFile">
           上传文件
         </UButton>
-        <p class="text-xs text-neutral-500">
+        <!-- <p class="text-xs text-neutral-500">
           文件将保存到 R2 前缀 <code class="text-xs">{{ RECORDS_R2_PREFIX }}</code>，外链域名 {{ RECORDS_STORE_PUBLIC_BASE }}
-        </p>
+        </p> -->
       </div>
 
       <div class="flex flex-col gap-3 flex-1">
