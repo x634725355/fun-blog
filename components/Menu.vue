@@ -15,6 +15,7 @@ const menuRoutes: MenuRoute[] = [
   // { path: '/mobile/RTC', name: 'RTC通话' },
   { path: '/mobile/upload', name: '上传文件' },
   { path: '/mobile/show-r2', name: '文件展示' },
+  { path: '/mobile/image-editor', name: '图片裁切' },
   { path: '/mobile/record-timeline', name: '记录' },
 ]
 
