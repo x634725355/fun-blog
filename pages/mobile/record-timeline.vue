@@ -24,11 +24,6 @@ function isImageKey(key: string) {
   return /\.(?:webp|jpg|jpeg|png|gif)$/i.test(key)
 }
 
-function safeBasename(name: string): string {
-  const base = name.replace(/^.*[/\\]/, '').replace(/\0/g, '').slice(0, 200)
-  return base || 'file'
-}
-
 async function loadFirst() {
   listLoad.value = true
   try {
@@ -109,10 +104,10 @@ async function submitFile() {
     return
   }
   fileLoad.value = true
-  const safeName = safeBasename(file.value.name)
-  const wrapped = new File([file.value], safeName, { type: file.value.type })
+  const { uploadName, originalName } = urlSafeUploadFilename(file.value.name)
+  const wrapped = new File([file.value], uploadName, { type: file.value.type })
   const dir = `${RECORDS_R2_PREFIX}${crypto.randomUUID()}`
-  const r2_key = `${dir}/${safeName}`
+  const r2_key = `${dir}/${uploadName}`
   try {
     await uploadR2(wrapped, dir)
     const row = await $fetch<MobileRecordItem>('/api/records', {
@@ -121,7 +116,7 @@ async function submitFile() {
         kind: 'file',
         r2_key,
         mime: wrapped.type || null,
-        original_name: safeName,
+        original_name: originalName,
       },
     })
     items.value.unshift(row)
