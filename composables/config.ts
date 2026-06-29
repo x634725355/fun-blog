@@ -1,1 +1,1 @@
-export const uploadKey = 'show'
+export const uploadKey = 'kan'
