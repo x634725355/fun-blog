@@ -71,12 +71,12 @@ onMounted(() => {
             </div>
           </div>
         </div>
-      </div>
-      <div>
-        <div v-for="item in listFile" class="flex gap-x-2 gap-y-2">
-          <div>{{ item.key }}</div>
-          <UButton size="sm" icon="i-lucide-beer" color="error" @click="() => deleteFile(item.key)" />
-          <UButton target="_blank" :to="preUrl + item.key" icon="i-lucide-file-down" size="sm" />
+        <div>
+          <div v-for="item in listFile" class="flex gap-x-2 gap-y-2">
+            <div>{{ item.key }}</div>
+            <UButton size="sm" icon="i-lucide-beer" color="error" @click="() => deleteFile(item.key)" />
+            <UButton target="_blank" :to="preUrl + item.key" icon="i-lucide-file-down" size="sm" />
+          </div>
         </div>
       </div>
 
