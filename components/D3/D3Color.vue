@@ -1,20 +1,41 @@
 <script lang="ts" setup>
 import * as d3 from 'd3'
 
-const timeout = ref()
+const timeout = ref<ReturnType<typeof setTimeout>>()
+const colorRoot = useTemplateRef<HTMLDivElement>('colorRoot')
+let resizeObserver: ResizeObserver | undefined
+let svgSelection: d3.Selection<SVGSVGElement, unknown, HTMLElement, any> | undefined
+
+function syncSvgSize() {
+  const container = colorRoot.value
+  if (!container || !svgSelection) {
+    return
+  }
+  const height = Math.max(container.clientHeight, 160)
+  svgSelection.attr('height', height)
+}
 
 function init() {
-  const svgD3 = d3.select('#color')
-    .append('svg')
-    .attr('class', 'h-96 w-full')
-    .on('click', onClick)
-  // .on('click touchstart', function (event) {
-  //   event.preventDefault()
-  //   createExplosion(this)
-  // })
+  const container = colorRoot.value
+  if (!container) {
+    return
+  }
+
+  svgSelection = d3.select(container).append('svg').attr('width', '100%').attr('class', 'block w-full h-full').on('click', onClick)
+
+  syncSvgSize()
+
+  if (typeof ResizeObserver !== 'undefined') {
+    resizeObserver = new ResizeObserver(() => {
+      syncSvgSize()
+    })
+    resizeObserver.observe(container)
+  }
 
   function onClick(event: PointerEvent) {
-    console.log('%c Line:67 🍑', 'color:#42b983', event.offsetX, event.offsetY)
+    if (!svgSelection) {
+      return
+    }
     const x = event.offsetX
     const y = event.offsetY
 
@@ -25,19 +46,9 @@ function init() {
       const moveX = Math.random() * 40
       const moveY = Math.random() * 40
 
-      const rect = svgD3.append('rect')
-        .attr('x', p.x)
-        .attr('y', p.y)
-        .attr('width', 4)
-        .attr('height', 4)
-        .style('fill', 'blue')
+      const rect = svgSelection!.append('rect').attr('x', p.x).attr('y', p.y).attr('width', 4).attr('height', 4).style('fill', 'blue')
 
-      rect.transition()
-        .duration(1000)
-        .attr('x', p.x + moveX)
-        .attr('y', p.y + moveY)
-        .style('opacity', 0)
-        .remove()
+      rect.transition().duration(1000).attr('x', p.x + moveX).attr('y', p.y + moveY).style('opacity', 0).remove()
 
       rectPoint.push(rect)
     })
@@ -55,6 +66,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  resizeObserver?.disconnect()
   if (timeout.value) {
     clearTimeout(timeout.value)
   }
@@ -62,7 +74,13 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div id="color" class="" />
+  <div ref="colorRoot" class="color-root h-full w-full min-h-[10rem]" />
 </template>
 
-<style scoped></style>
+<style scoped>
+.color-root {
+  box-sizing: border-box;
+  min-width: 0;
+  overflow: hidden;
+}
+</style>
