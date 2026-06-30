@@ -17,6 +17,12 @@ export default defineNuxtConfig({
   },
   vite: {
     plugins: [tailwindcss()],
+    ssr: {
+      external: ['cropperjs', '@cropper/elements', '@cropper/utils'],
+    },
+  },
+  routeRules: {
+    '/mobile/image-editor': { ssr: false },
   },
   runtimeConfig: {
     public: {

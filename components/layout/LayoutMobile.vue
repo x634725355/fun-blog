@@ -28,16 +28,6 @@ function closeMenu() {
       >
         <template #content>
           <div class="slideover-panel">
-            <UButton
-              color="secondary"
-              variant="ghost"
-              size="sm"
-              icon="i-heroicons-x-mark-20-solid"
-              class="slideover-close"
-              square
-              padded
-              @click="closeMenu"
-            />
             <Menu @navigate="closeMenu" />
           </div>
         </template>
