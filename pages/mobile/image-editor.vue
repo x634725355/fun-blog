@@ -7,3 +7,6 @@ definePageMeta({ ssr: false })
     <ImageEditorWorkspace />
   </LayoutMobile>
 </template>
+
+<!-- Hallmark · tool page · ImageEditorWorkspace · design-system: design.md -->
+

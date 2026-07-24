@@ -3,7 +3,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
-  modules: ['@pinia/nuxt', '@nuxt/ui', '@vueuse/nuxt', 'nitro-cloudflare-dev'],
+  modules: ['@pinia/nuxt', '@nuxt/icon', '@vueuse/nuxt', 'nitro-cloudflare-dev'],
   devtools: { enabled: true },
 
   devServer: {

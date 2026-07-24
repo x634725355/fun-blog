@@ -1,30 +1,70 @@
 @import "tailwindcss";
-@import "@nuxt/ui";
+@import "./tokens.css";
+@import "./ui.css";
 
 html,
 body {
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-style: normal;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+}
+
+code,
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 
 .layout-enter-active,
 .layout-leave-active {
-  transition: all 0.4s;
+  transition: opacity var(--dur-med) var(--ease-out);
 }
 
 .layout-enter-from,
 .layout-leave-to {
-  filter: grayscale(1);
+  opacity: 0;
 }
 
 .page-enter-active,
 .page-leave-active {
-  transition: all 0.4s;
+  transition: opacity var(--dur-med) var(--ease-out), transform var(--dur-med) var(--ease-out);
 }
 
 .page-enter-from,
 .page-leave-to {
   opacity: 0;
-  filter: blur(1rem);
+  transform: translateY(6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .layout-enter-active,
+  .layout-leave-active,
+  .page-enter-active,
+  .page-leave-active {
+    transition: opacity 120ms linear;
+  }
+
+  .page-enter-from,
+  .page-leave-to {
+    transform: none;
+  }
 }

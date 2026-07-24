@@ -16,6 +16,8 @@ const sourceName = ref('')
 const imageSrc = ref('')
 const imageLoading = ref(false)
 const applying = ref(false)
+const hasPreview = ref(false)
+const dragOver = ref(false)
 const naturalWidth = ref(0)
 const naturalHeight = ref(0)
 
@@ -125,6 +127,18 @@ async function initCropper() {
   }
 }
 
+function clearPreviewCanvas() {
+  hasPreview.value = false
+  const preview = previewRef.value
+  if (!preview) {
+    return
+  }
+  const ctx = preview.getContext('2d')
+  preview.width = 0
+  preview.height = 0
+  ctx?.clearRect(0, 0, 0, 0)
+}
+
 function syncPreviewCanvas(canvas: HTMLCanvasElement) {
   const preview = previewRef.value
   if (!preview) {
@@ -138,6 +152,49 @@ function syncPreviewCanvas(canvas: HTMLCanvasElement) {
   }
   ctx.clearRect(0, 0, preview.width, preview.height)
   ctx.drawImage(canvas, 0, 0)
+  hasPreview.value = true
+}
+
+function openPicker() {
+  fileInputRef.value?.click()
+}
+
+function onDragOver(e: DragEvent) {
+  e.preventDefault()
+  dragOver.value = true
+}
+
+function onDragLeave() {
+  dragOver.value = false
+}
+
+async function takeImageFile(file: File | null | undefined) {
+  if (!file) {
+    return
+  }
+  if (!file.type.startsWith('image/')) {
+    toast.add({ color: 'warning', title: '请选择图片文件' })
+    return
+  }
+
+  destroyCropper()
+  clearPreviewCanvas()
+  imageSrc.value = ''
+  revokeObjectUrl()
+  await nextTick()
+
+  objectUrl = URL.createObjectURL(file)
+  sourceName.value = file.name.replace(/\.[^.]+$/, '') || 'image'
+  useScale.value = false
+  imageLoading.value = true
+  imageSrc.value = objectUrl
+}
+
+async function onDrop(e: DragEvent) {
+  e.preventDefault()
+  dragOver.value = false
+  const file = e.dataTransfer?.files?.item(0)
+  await takeImageFile(file)
 }
 
 async function applyPreview(options?: { silent?: boolean }) {
@@ -181,25 +238,7 @@ async function applyPreview(options?: { silent?: boolean }) {
 async function onFileChange(e: Event) {
   const input = e.target as HTMLInputElement
   const file = input.files?.item(0)
-  if (!file) {
-    return
-  }
-  if (!file.type.startsWith('image/')) {
-    toast.add({ color: 'warning', title: '请选择图片文件' })
-    input.value = ''
-    return
-  }
-
-  destroyCropper()
-  imageSrc.value = ''
-  revokeObjectUrl()
-  await nextTick()
-
-  objectUrl = URL.createObjectURL(file)
-  sourceName.value = file.name.replace(/\.[^.]+$/, '') || 'image'
-  useScale.value = false
-  imageLoading.value = true
-  imageSrc.value = objectUrl
+  await takeImageFile(file)
   input.value = ''
 }
 
@@ -283,17 +322,58 @@ onUnmounted(() => {
       </p>
     </header>
 
-    <section class="image-editor__section">
+    <section
+      class="image-editor__section image-editor__section--pick"
+      aria-labelledby="image-editor-pick-label"
+    >
+      <h2
+        id="image-editor-pick-label"
+        class="image-editor__section-title"
+      >
+        选择图片
+      </h2>
+
       <input
         ref="fileInputRef"
         type="file"
         accept="image/*"
-        class="image-editor__file"
+        class="image-editor__native"
         @change="onFileChange"
       >
-      <p class="image-editor__meta">
+
+      <button
+        type="button"
+        class="image-editor__drop"
+        :class="{
+          'image-editor__drop--active': dragOver,
+          'image-editor__drop--filled': hasImage,
+        }"
+        @click="openPicker"
+        @dragover="onDragOver"
+        @dragleave="onDragLeave"
+        @drop="onDrop"
+      >
+        <Icon
+          name="i-heroicons-photo"
+          class="image-editor__drop-icon"
+        />
+        <span class="image-editor__drop-title">
+          {{ hasImage ? '重新选择图片' : '点击选择图片' }}
+        </span>
+        <span class="image-editor__drop-hint">
+          也可拖放到这里 · 支持常见图片格式
+        </span>
+      </button>
+
+      <p
+        v-if="hasImage || imageLoading"
+        class="image-editor__meta"
+      >
         原图尺寸：<span>{{ sourceSizeText }}</span>
-        <span v-if="imageLoading" class="image-editor__loading">加载中…</span>
+        <span
+          v-if="imageLoading"
+          class="image-editor__loading"
+        >加载中…</span>
       </p>
     </section>
 
@@ -366,14 +446,30 @@ onUnmounted(() => {
       </UButton>
     </section>
 
-    <section class="image-editor__section">
-      <p class="image-editor__meta">
+    <section
+      class="image-editor__section"
+      aria-labelledby="image-editor-result-label"
+    >
+      <h2
+        id="image-editor-result-label"
+        class="image-editor__section-title"
+      >
         结果预览
-      </p>
-      <div class="image-editor__preview-wrap">
-        <canvas ref="previewRef" class="image-editor__preview" />
-        <p v-if="!hasImage" class="image-editor__empty">
-          上传图片并完成裁切后显示预览
+      </h2>
+      <div
+        class="image-editor__preview-wrap"
+        :class="{ 'image-editor__preview-wrap--empty': !hasPreview }"
+      >
+        <canvas
+          v-show="hasPreview"
+          ref="previewRef"
+          class="image-editor__preview"
+        />
+        <p
+          v-if="!hasPreview"
+          class="image-editor__empty"
+        >
+          {{ hasImage ? '应用并预览后显示结果' : '上传图片并完成裁切后显示预览' }}
         </p>
       </div>
     </section>
@@ -381,76 +477,170 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/* Hallmark · genre: playful · tool: Workbench panel · theme: Hum × #E5CB90 · design-system: design.md
+ * pre-emit critique: P4 H5 E5 S4 R5 V4
+ */
+
 .image-editor {
   box-sizing: border-box;
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  padding: 0.75rem;
-  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  padding: var(--space-sm);
+  padding-bottom: max(var(--space-sm), env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-sm);
 }
 
-.image-editor__header {
+.image-editor__header,
+.image-editor__section,
+.image-editor__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
   min-width: 0;
+  padding: var(--space-sm);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-rule);
+  background: var(--color-paper-2);
+  box-shadow: var(--shadow-soft);
+}
+
+.image-editor__section--pick {
+  position: relative;
+  gap: var(--space-xs);
+  border-color: color-mix(in oklab, var(--color-accent) 45%, var(--color-rule));
+  background:
+    radial-gradient(120% 90% at 0% 0%, var(--glow-accent), transparent 55%),
+    var(--color-paper);
+  box-shadow: var(--shadow-bubble);
+}
+
+.image-editor__section-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  font-style: normal;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
 }
 
 .image-editor__title {
   margin: 0;
-  font-size: 1.125rem;
-  font-weight: 600;
-  line-height: 1.5rem;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  font-style: normal;
+  line-height: 1.35;
+  letter-spacing: -0.025em;
+  overflow-wrap: anywhere;
 }
 
-.image-editor__hint {
-  margin: 0.375rem 0 0;
-  font-size: 0.8125rem;
-  line-height: 1.25rem;
-  color: rgb(100 116 139);
-}
-
-.image-editor__section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.625rem;
-  min-width: 0;
-}
-
-.image-editor__file {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  font-size: 0.875rem;
-}
-
-.image-editor__meta {
+.image-editor__hint,
+.image-editor__meta,
+.image-editor__tip {
   margin: 0;
-  font-size: 0.8125rem;
-  color: rgb(100 116 139);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  color: var(--color-muted);
 }
 
 .image-editor__loading {
-  margin-left: 0.5rem;
+  margin-left: var(--space-2xs);
+  color: var(--color-accent-2);
+}
+
+.image-editor__native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.image-editor__drop {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2xs);
+  width: 100%;
+  min-height: 9.5rem;
+  padding: var(--space-md) var(--space-sm);
+  border: 2px dashed color-mix(in oklab, var(--color-accent) 55%, var(--color-rule));
+  border-radius: var(--radius-card);
+  background: color-mix(in oklab, var(--color-accent-soft) 70%, var(--color-paper));
+  color: var(--color-ink);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--dur-short) var(--ease-out),
+    border-color var(--dur-short) var(--ease-out),
+    transform var(--dur-short) var(--ease-out),
+    box-shadow var(--dur-short) var(--ease-out);
+}
+
+.image-editor__drop:hover {
+  border-color: var(--color-accent-deep);
+  background: var(--color-accent-soft);
+  box-shadow: var(--shadow-soft);
+}
+
+.image-editor__drop:active {
+  transform: translateY(1px);
+}
+
+.image-editor__drop--active {
+  border-color: var(--color-accent-2);
+  background: var(--color-accent-2-soft);
+}
+
+.image-editor__drop--filled {
+  border-style: solid;
+  border-color: color-mix(in oklab, var(--color-accent) 40%, var(--color-rule));
+}
+
+.image-editor__drop-icon {
+  width: 2rem;
+  height: 2rem;
+  color: var(--color-accent-deep);
+}
+
+.image-editor__drop-title {
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  font-weight: 700;
+  font-style: normal;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.image-editor__drop-hint {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+  text-align: center;
 }
 
 .image-editor__label {
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.image-editor__tip {
-  margin: 0;
-  font-size: 0.75rem;
-  color: rgb(100 116 139);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-ink);
 }
 
 .image-editor__row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--space-2xs);
   flex-wrap: wrap;
 }
 
@@ -461,8 +651,8 @@ onUnmounted(() => {
   height: min(50dvh, 22rem);
   min-height: 14rem;
   overflow: hidden;
-  border-radius: 0.5rem;
-  background: rgb(15 23 42);
+  border-radius: var(--radius-bubble);
+  background: var(--color-stage);
 }
 
 .image-editor__cropper-host :deep(cropper-canvas) {
@@ -478,7 +668,7 @@ onUnmounted(() => {
 .image-editor__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem;
+  gap: var(--space-2xs);
 }
 
 .image-editor__grid--two {
@@ -492,31 +682,30 @@ onUnmounted(() => {
 .image-editor__field {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-3xs);
   min-width: 0;
-  font-size: 0.75rem;
-  color: rgb(71 85 105);
-}
-
-.image-editor__actions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  font-size: var(--text-xs);
+  color: var(--color-ink-2);
 }
 
 .image-editor__preview-wrap {
   position: relative;
+  box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  min-height: 8rem;
-  border: 1px dashed rgb(203 213 225);
-  border-radius: 0.5rem;
-  background: rgb(248 250 252);
+  min-height: 10rem;
+  border: 1px dashed var(--color-rule);
+  border-radius: var(--radius-bubble);
+  background: var(--color-paper);
   overflow: auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.5rem;
+  padding: var(--space-sm);
+}
+
+.image-editor__preview-wrap--empty {
+  overflow: hidden;
 }
 
 .image-editor__preview {
@@ -527,28 +716,21 @@ onUnmounted(() => {
 
 .image-editor__empty {
   margin: 0;
-  font-size: 0.8125rem;
-  color: rgb(148 163 184);
+  width: 100%;
+  max-width: 22ch;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--color-muted);
+  text-align: center;
 }
 
-@media (prefers-color-scheme: dark) {
-  .image-editor__hint,
-  .image-editor__meta,
-  .image-editor__tip {
-    color: rgb(148 163 184);
+@media (prefers-reduced-motion: reduce) {
+  .image-editor__drop {
+    transition: none;
   }
 
-  .image-editor__field {
-    color: rgb(203 213 225);
-  }
-
-  .image-editor__preview-wrap {
-    border-color: rgb(71 85 105);
-    background: rgb(30 41 59);
-  }
-
-  .image-editor__empty {
-    color: rgb(100 116 139);
+  .image-editor__drop:active {
+    transform: none;
   }
 }
 </style>

@@ -4,10 +4,6 @@ import { RECORDS_R2_PREFIX, RECORDS_STORE_PUBLIC_BASE } from '~/constants/mobile
 
 definePageMeta({ ssr: false })
 
-const route = useRoute()
-/** 仅当 URL 带 `?time=1` 时展示时间线列表 */
-const showTimeline = computed(() => route.query.time === '1')
-
 const toast = useToast()
 
 const textDraft = ref('')
@@ -99,6 +95,17 @@ function fileChange(e: Event) {
   file.value = input.files?.item(0) ?? null
 }
 
+function openFilePicker() {
+  fileInputRef.value?.click()
+}
+
+function clearFile() {
+  file.value = null
+  if (fileInputRef.value) {
+    fileInputRef.value.value = ''
+  }
+}
+
 async function submitFile() {
   if (!file.value) {
     return
@@ -157,88 +164,116 @@ function publicUrl(key: string) {
   return `${RECORDS_STORE_PUBLIC_BASE}${key}`
 }
 
-watch(showTimeline, (show) => {
-  if (show) {
-    loadFirst()
-  }
-}, { immediate: true })
+onMounted(() => {
+  loadFirst()
+})
 </script>
 
 <template>
   <LayoutMobile>
-    <div class="p-2 flex flex-col gap-4 overflow-auto h-full">
-      <div class="flex flex-col gap-2 border-b pb-4">
-        <h1 class="text-lg font-semibold">
+    <div class="record">
+      <header class="record__head">
+        <h1 class="record__title">
           记录
         </h1>
+        <p class="record__lede">
+          一段文字或一个文件，按时间线往上叠。
+        </p>
+      </header>
+
+      <section class="record__panel">
+        <h2 class="record__panel-title">
+          写文字
+        </h2>
         <UTextarea v-model="textDraft" autoresize :rows="3" placeholder="写一段文字…" />
-        <UButton :loading="textSubmitLoad" @click="submitText">
+        <UButton block :loading="textSubmitLoad" @click="submitText">
           保存文字
         </UButton>
-      </div>
+      </section>
 
-      <div class="flex flex-col gap-2 border-b pb-4">
+      <section class="record__panel">
+        <h2 class="record__panel-title">
+          传文件
+        </h2>
         <input
           ref="fileInputRef"
           type="file"
-          class="block w-full text-sm text-neutral-800 file:mr-2 file:rounded file:border-0 file:bg-neutral-200 file:px-2 file:py-1"
+          class="record__native"
           @change="fileChange"
         >
-        <UButton :loading="fileLoad" :disabled="!file" @click="submitFile">
-          上传文件
+        <button type="button" class="record__drop" @click="openFilePicker">
+          <Icon name="i-heroicons-folder" class="record__drop-icon" />
+          <span>{{ file ? '重新选择' : '点击选择文件' }}</span>
+        </button>
+        <div v-if="file" class="record__chip">
+          <span class="record__chip-name" :title="file.name">
+            {{ file.name }}
+          </span>
+          <UButton
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            icon="i-heroicons-x-mark-20-solid"
+            square
+            aria-label="清除"
+            @click="clearFile"
+          />
+        </div>
+        <UButton block :loading="fileLoad" :disabled="!file" @click="submitFile">
+          上传并记录
         </UButton>
-        <!-- <p class="text-xs text-neutral-500">
-          文件将保存到 R2 前缀 <code class="text-xs">{{ RECORDS_R2_PREFIX }}</code>，外链域名 {{ RECORDS_STORE_PUBLIC_BASE }}
-        </p> -->
-      </div>
+      </section>
 
-      <div v-if="showTimeline" class="flex flex-col gap-3 flex-1">
-        <div class="flex justify-between items-center">
-          <span class="font-medium">时间线</span>
+      <section class="record__panel record__panel--list">
+        <div class="record__list-head">
+          <h2 class="record__panel-title">
+            时间线
+          </h2>
           <UButton size="sm" variant="ghost" :loading="listLoad" @click="loadFirst">
             刷新
           </UButton>
         </div>
 
-        <div v-if="listLoad && items.length === 0" class="text-sm text-neutral-500">
+        <div v-if="listLoad && items.length === 0" class="record__empty">
           加载中…
         </div>
+        <p v-else-if="!listLoad && items.length === 0" class="record__empty">
+          暂无记录，保存文字或上传文件后会出现在这里。
+        </p>
 
-        <div v-for="row in items" :key="row.id" class="border rounded p-2 flex flex-col gap-2 bg-white/5">
-          <div class="text-xs text-neutral-500 flex justify-between gap-2">
+        <article v-for="row in items" :key="row.id" class="record__card">
+          <div class="record__meta">
             <span>{{ new Date(row.created_at).toLocaleString() }}</span>
             <span>{{ row.kind === 'text' ? '文字' : '文件' }}</span>
           </div>
 
           <template v-if="row.kind === 'text'">
-            <p class="whitespace-pre-wrap text-sm">
+            <p class="record__body">
               {{ row.body }}
             </p>
-            <div>
-              <UButton size="sm" color="error" variant="soft" @click="removeRow(row)">
-                删除
-              </UButton>
-            </div>
+            <UButton size="sm" color="error" variant="soft" @click="removeRow(row)">
+              删除
+            </UButton>
           </template>
 
           <template v-else-if="row.kind === 'file' && row.r2_key">
-            <div v-if="isImageKey(row.r2_key)" class="flex flex-col gap-2">
-              <img class="max-h-48 w-auto rounded" :src="publicUrl(row.r2_key)" :alt="row.original_name || row.r2_key">
-              <div class="flex gap-2 flex-wrap">
+            <div v-if="isImageKey(row.r2_key)" class="record__file">
+              <img class="record__img" :src="publicUrl(row.r2_key)" :alt="row.original_name || row.r2_key">
+              <div class="record__actions">
                 <UButton size="sm" :to="publicUrl(row.r2_key)" target="_blank" icon="i-lucide-external-link">
-                  打开原图
+                  打开
                 </UButton>
                 <UButton size="sm" color="error" variant="soft" @click="removeRow(row)">
                   删除
                 </UButton>
               </div>
             </div>
-            <div v-else class="flex flex-col gap-2">
-              <div class="text-sm break-all">
+            <div v-else class="record__file">
+              <div class="record__name">
                 {{ row.original_name || row.r2_key }}
               </div>
-              <div class="flex gap-2 flex-wrap">
-                <UButton size="sm" :to="publicUrl(row.r2_key)" target="_blank" icon="i-lucide-file-down">
+              <div class="record__actions">
+                <UButton size="sm" :to="publicUrl(row.r2_key)" target="_blank" icon="i-lucide-download">
                   下载
                 </UButton>
                 <UButton size="sm" color="error" variant="soft" @click="removeRow(row)">
@@ -247,20 +282,216 @@ watch(showTimeline, (show) => {
               </div>
             </div>
           </template>
-        </div>
+        </article>
 
         <UButton
           v-if="nextCursor"
-          class="self-center"
+          block
           variant="outline"
           :loading="listLoad"
           @click="loadMore"
         >
           加载更多
         </UButton>
-      </div>
+      </section>
     </div>
   </LayoutMobile>
 </template>
 
-<style scoped></style>
+<style scoped>
+/* Hallmark · genre: modern-minimal · macrostructure: Workbench · design-system: design.md · designed-as-app */
+
+.record {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 100%;
+  padding: var(--space-sm);
+  padding-bottom: max(var(--space-md), env(safe-area-inset-bottom));
+}
+
+.record__head {
+  min-width: 0;
+}
+
+.record__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-display);
+  font-weight: 700;
+  font-style: normal;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+}
+
+.record__lede {
+  margin: var(--space-3xs) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  max-width: 36ch;
+}
+
+.record__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  min-width: 0;
+  padding: var(--space-sm);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-rule);
+  background: var(--color-paper-2);
+  box-shadow: var(--shadow-soft);
+}
+
+.record__panel--list {
+  flex: 1;
+}
+
+.record__panel-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  font-style: normal;
+  letter-spacing: -0.02em;
+}
+
+.record__native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.record__drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3xs);
+  width: 100%;
+  min-height: 6.5rem;
+  margin: 0;
+  padding: var(--space-sm);
+  border: 1.5px dashed var(--color-rule);
+  border-radius: var(--radius-card);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.record__drop:hover {
+  border-color: color-mix(in oklab, var(--color-accent) 55%, var(--color-rule));
+  background: var(--color-accent-soft);
+}
+
+.record__drop:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.record__drop-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--color-accent);
+}
+
+.record__chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  min-width: 0;
+  padding: var(--space-2xs) var(--space-xs);
+  border-radius: var(--radius-bubble);
+  border: 1px solid var(--color-rule);
+  background: var(--color-paper);
+}
+
+.record__chip-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.record__list-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+
+.record__empty {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+
+.record__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  padding: var(--space-xs);
+  border-radius: var(--radius-bubble);
+  border: 1px solid var(--color-rule);
+  background: var(--color-paper);
+  min-width: 0;
+}
+
+.record__meta {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2xs);
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+}
+
+.record__body {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: var(--text-sm);
+}
+
+.record__file {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  min-width: 0;
+}
+
+.record__img {
+  width: 100%;
+  max-height: 12rem;
+  object-fit: contain;
+  border-radius: var(--radius-input);
+  background: var(--color-stage);
+}
+
+.record__name {
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+.record__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+}
+</style>

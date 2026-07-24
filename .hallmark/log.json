@@ -1,0 +1,71 @@
+[
+  {
+    "date": "2026-07-24",
+    "scope": "page",
+    "macrostructure": "Workbench",
+    "theme": "custom",
+    "theme_axes": "light / rounded-sans / multi",
+    "vibe": "hum index, sand gold",
+    "enrichment": "none",
+    "brief": "image-editor · prominent pick dropzone + centered empty result"
+  },
+  {
+    "date": "2026-07-24",
+    "scope": "app",
+    "macrostructure": "Index-First",
+    "theme": "custom",
+    "theme_axes": "light / rounded-sans / multi",
+    "vibe": "hum index, sand gold",
+    "enrichment": "none",
+    "brief": "redesign · Index-First + Hum × #E5CB90"
+  },
+  {
+    "date": "2026-07-24",
+    "scope": "app",
+    "macrostructure": "Workbench",
+    "theme": "custom",
+    "theme_axes": "light / rounded-sans / warm",
+    "vibe": "sand gold, soft bubble",
+    "enrichment": "none",
+    "brief": "palette lock · anchor #E5CB90"
+  },
+  {
+    "date": "2026-07-24",
+    "scope": "app",
+    "macrostructure": "Workbench",
+    "theme": "custom",
+    "theme_axes": "light / rounded-sans / warm",
+    "vibe": "peach cream, sky bubble",
+    "enrichment": "none",
+    "brief": "palette lock · Color Hunt #ffbe91 #ffddb0 #fffce1 #cfebff"
+  },
+  {
+    "date": "2026-07-24",
+    "scope": "app",
+    "macrostructure": "Workbench",
+    "theme": "custom",
+    "theme_axes": "light / rounded-sans / warm",
+    "vibe": "coral signal, soft bubble shell",
+    "enrichment": "none",
+    "brief": "theme switch · Coral × Bubble custom"
+  },
+  {
+    "date": "2026-07-24",
+    "scope": "app",
+    "macrostructure": "Workbench",
+    "theme": "custom",
+    "theme_axes": "dark / mono / chromatic-other",
+    "vibe": "terminal glow, soft bubble shell",
+    "enrichment": "none",
+    "brief": "theme switch · Terminal × Bubble custom"
+  },
+  {
+    "date": "2026-07-24",
+    "scope": "app",
+    "macrostructure": "Workbench",
+    "theme": "Newsprint",
+    "theme_axes": "light / roman-serif / cool",
+    "enrichment": "none",
+    "brief": "theme switch · Newsprint steel-blue"
+  }
+]

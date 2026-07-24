@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import type { FormSubmitEvent } from '#ui/types'
 import type { InferType } from 'yup'
 import { object, string } from 'yup'
 import { useUserInfo } from '~/composables/modules/userInfo'
@@ -13,11 +12,10 @@ const schema = object({
 type Schema = InferType<typeof schema>
 
 const state = reactive({
-  username: undefined,
+  username: undefined as string | undefined,
 })
 
-async function onSubmit(event: FormSubmitEvent<Schema>) {
-  // Do something with event.data
+async function onSubmit(event: { data: Schema }) {
   sessionStorage.setItem('username', event.data.username)
   userInfo.username = event.data.username
   navigateTo('/mobile/rtc')

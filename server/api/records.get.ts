@@ -16,7 +16,7 @@ async function fetchPage(db: D1Database, limit: number) {
     )
     .bind(limit)
     .all()
-  return (r.results ?? []) as RecordRow[]
+  return (r.results ?? []) as unknown as RecordRow[]
 }
 
 async function fetchPageAfterCursor(
@@ -34,7 +34,7 @@ async function fetchPageAfterCursor(
     )
     .bind(cur.c, cur.c, cur.i, limit)
     .all()
-  return (r.results ?? []) as RecordRow[]
+  return (r.results ?? []) as unknown as RecordRow[]
 }
 
 interface RecordRow {

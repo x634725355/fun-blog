@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3'
 import { createError } from 'h3'
 
-export function getD1(event: H3Event) {
+export function getD1(event: H3Event): D1Database {
   const db = event.context.cloudflare?.env?.DB
   if (!db) {
     throw createError({
