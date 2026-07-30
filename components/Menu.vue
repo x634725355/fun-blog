@@ -23,7 +23,8 @@ const menuRoutes: MenuRoute[] = [
   { path: '/mobile/upload', name: '上传文件', hint: 'r2 put', tint: 'cyan' },
   { path: '/mobile/show-r2', name: '文件展示', hint: 'gallery', tint: 'gold' },
   { path: '/mobile/image-editor', name: '图片裁切', hint: 'crop', tint: 'cyan' },
-  { path: '/mobile/record-timeline', name: '记录', hint: 'timeline', tint: 'coral' },
+  { path: '/mobile/qrcode', name: '二维码', hint: 'qr', tint: 'coral' },
+  { path: '/mobile/record-timeline', name: '记录', hint: 'timeline', tint: 'gold' },
 ]
 
 const visibleRoutes = computed(() => {
