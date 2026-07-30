@@ -25,6 +25,7 @@ const generating = ref(false)
 const qrDataUrl = ref('')
 
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef')
+const captureInputRef = useTemplateRef<HTMLInputElement>('captureInputRef')
 const videoRef = useTemplateRef<HTMLVideoElement>('videoRef')
 const dragOver = ref(false)
 const decoding = ref(false)
@@ -34,6 +35,20 @@ const decodeResult = ref('')
 const cameraOn = ref(false)
 const cameraStarting = ref(false)
 const cameraHint = ref('')
+
+const isSecureContext = computed(() => {
+  if (!import.meta.client) {
+    return true
+  }
+  return window.isSecureContext
+})
+
+const canUseLiveCamera = computed(() => {
+  if (!import.meta.client) {
+    return false
+  }
+  return isSecureContext.value && !!navigator.mediaDevices?.getUserMedia
+})
 
 let cameraStream: MediaStream | null = null
 let scanRaf = 0
@@ -116,41 +131,6 @@ function tickCameraScan(now: number) {
   }, 1200)
 }
 
-async function startCamera() {
-  if (cameraOn.value || cameraStarting.value) {
-    return
-  }
-  cameraStarting.value = true
-  try {
-    revokePreviewUrl()
-    const stream = await openQrCameraStream()
-    cameraStream = stream
-    cameraOn.value = true
-    cameraHint.value = '将二维码置于框内，自动识别'
-    await nextTick()
-    const video = videoRef.value
-    if (!video) {
-      throw new Error('预览未就绪')
-    }
-    video.srcObject = stream
-    await video.play()
-    lastScanAt = 0
-    scanLocked = false
-    scanRaf = requestAnimationFrame(tickCameraScan)
-  }
-  catch (e: any) {
-    stopCamera()
-    toast.add({
-      color: 'error',
-      title: '无法打开摄像头',
-      description: e?.message || String(e),
-    })
-  }
-  finally {
-    cameraStarting.value = false
-  }
-}
-
 async function toggleCamera() {
   if (cameraOn.value) {
     stopCamera()
@@ -220,6 +200,57 @@ async function onCopyImage() {
 
 function openPicker() {
   fileInputRef.value?.click()
+}
+
+function openCaptureCamera() {
+  captureInputRef.value?.click()
+}
+
+async function startCamera() {
+  if (cameraOn.value || cameraStarting.value) {
+    return
+  }
+  if (!canUseLiveCamera.value) {
+    toast.add({
+      color: 'warning',
+      title: '实时摄像头不可用',
+      description: isSecureContext.value
+        ? '当前浏览器不支持网页摄像头'
+        : '请用 HTTPS 或 localhost 访问；也可直接点「拍照扫码」',
+    })
+    return
+  }
+  cameraStarting.value = true
+  try {
+    revokePreviewUrl()
+    const stream = await openQrCameraStream()
+    cameraStream = stream
+    cameraOn.value = true
+    cameraHint.value = '将二维码置于框内，自动识别'
+    await nextTick()
+    const video = videoRef.value
+    if (!video) {
+      throw new Error('预览未就绪')
+    }
+    video.srcObject = stream
+    video.setAttribute('playsinline', 'true')
+    video.muted = true
+    await video.play()
+    lastScanAt = 0
+    scanLocked = false
+    scanRaf = requestAnimationFrame(tickCameraScan)
+  }
+  catch (e: any) {
+    stopCamera()
+    toast.add({
+      color: 'error',
+      title: '无法打开摄像头',
+      description: e?.message || String(e),
+    })
+  }
+  finally {
+    cameraStarting.value = false
+  }
 }
 
 function onDragOver(e: DragEvent) {
@@ -429,10 +460,14 @@ onUnmounted(() => {
       class="qr__panel qr__panel--decode"
       role="tabpanel"
     >
-      <h2 class="qr__section-title">
-        选择图片
-      </h2>
-
+      <input
+        ref="captureInputRef"
+        type="file"
+        accept="image/*"
+        capture="environment"
+        class="qr__native"
+        @change="onFileChange"
+      >
       <input
         ref="fileInputRef"
         type="file"
@@ -440,6 +475,18 @@ onUnmounted(() => {
         class="qr__native"
         @change="onFileChange"
       >
+
+      <UButton
+        block
+        size="xl"
+        icon="i-heroicons-camera"
+        @click="openCaptureCamera"
+      >
+        拍照扫码
+      </UButton>
+      <p class="qr__meta">
+        推荐手机使用：唤起系统相机拍照后自动解析。
+      </p>
 
       <button
         type="button"
@@ -454,32 +501,39 @@ onUnmounted(() => {
         @drop="onDrop"
       >
         <Icon
-          name="i-heroicons-qr-code"
+          name="i-heroicons-photo"
           class="qr__drop-icon"
         />
         <span class="qr__drop-title">
-          {{ previewObjectUrl ? '重新选择图片' : '点击选择图片' }}
+          {{ previewObjectUrl ? '重新选图' : '从相册选图' }}
         </span>
         <span class="qr__drop-hint">
-          也可拖放到这里 · 选图后自动解码
+          也可拖放图片到这里
         </span>
       </button>
 
       <div class="qr__camera-block">
         <div class="qr__camera-head">
           <h2 class="qr__section-title">
-            摄像头扫码
+            页面内实时扫码
           </h2>
           <UButton
             size="sm"
-            :variant="cameraOn ? 'soft' : 'solid'"
+            :variant="cameraOn ? 'soft' : 'outline'"
             :color="cameraOn ? 'neutral' : 'primary'"
             :loading="cameraStarting"
+            :disabled="!canUseLiveCamera && !cameraOn"
             @click="toggleCamera"
           >
-            {{ cameraOn ? '关闭摄像头' : '打开摄像头' }}
+            {{ cameraOn ? '关闭' : '打开预览' }}
           </UButton>
         </div>
+        <p
+          v-if="!canUseLiveCamera"
+          class="qr__meta"
+        >
+          实时预览需 HTTPS（或本机 localhost）。用局域网 http IP 访问时请用上方「拍照扫码」。
+        </p>
 
         <div
           v-if="cameraOn"
