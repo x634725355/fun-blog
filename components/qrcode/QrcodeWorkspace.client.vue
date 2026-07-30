@@ -3,11 +3,15 @@ import type { QrEccLevel, QrSizeKey } from '~/utils/qrcode'
 import {
   QR_ECC_OPTIONS,
   QR_SIZE_OPTIONS,
+  captureVideoFrame,
   copyPngDataUrl,
   copyQrText,
+  decodeQrFromImageData,
   decodeQrFromImageFile,
   downloadDataUrl,
   generateQrDataUrl,
+  openQrCameraStream,
+  stopMediaStream,
 } from '~/utils/qrcode'
 
 const toast = useToast()
@@ -21,11 +25,20 @@ const generating = ref(false)
 const qrDataUrl = ref('')
 
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef')
+const videoRef = useTemplateRef<HTMLVideoElement>('videoRef')
 const dragOver = ref(false)
 const decoding = ref(false)
 const sourceName = ref('')
 const previewObjectUrl = ref('')
 const decodeResult = ref('')
+const cameraOn = ref(false)
+const cameraStarting = ref(false)
+const cameraHint = ref('')
+
+let cameraStream: MediaStream | null = null
+let scanRaf = 0
+let lastScanAt = 0
+let scanLocked = false
 
 const sizeItems = QR_SIZE_OPTIONS.map(item => ({
   label: item.label,
@@ -45,6 +58,105 @@ function revokePreviewUrl() {
     URL.revokeObjectURL(previewObjectUrl.value)
     previewObjectUrl.value = ''
   }
+}
+
+function stopCameraScanLoop() {
+  if (scanRaf) {
+    cancelAnimationFrame(scanRaf)
+    scanRaf = 0
+  }
+}
+
+function stopCamera() {
+  stopCameraScanLoop()
+  scanLocked = false
+  stopMediaStream(cameraStream)
+  cameraStream = null
+  cameraOn.value = false
+  cameraHint.value = ''
+  const video = videoRef.value
+  if (video) {
+    video.srcObject = null
+  }
+}
+
+function tickCameraScan(now: number) {
+  if (!cameraOn.value) {
+    return
+  }
+  scanRaf = requestAnimationFrame(tickCameraScan)
+
+  if (scanLocked || now - lastScanAt < 250) {
+    return
+  }
+  lastScanAt = now
+
+  const video = videoRef.value
+  if (!video || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+    return
+  }
+
+  const frame = captureVideoFrame(video)
+  if (!frame) {
+    return
+  }
+  const text = decodeQrFromImageData(frame)
+  if (!text) {
+    return
+  }
+
+  scanLocked = true
+  decodeResult.value = text
+  sourceName.value = '摄像头扫码'
+  cameraHint.value = '已识别，可继续对准下一码或关闭摄像头'
+  toast.add({ color: 'primary', title: '扫码成功' })
+  // 稍作冷却，避免同一帧连弹
+  window.setTimeout(() => {
+    scanLocked = false
+  }, 1200)
+}
+
+async function startCamera() {
+  if (cameraOn.value || cameraStarting.value) {
+    return
+  }
+  cameraStarting.value = true
+  try {
+    revokePreviewUrl()
+    const stream = await openQrCameraStream()
+    cameraStream = stream
+    cameraOn.value = true
+    cameraHint.value = '将二维码置于框内，自动识别'
+    await nextTick()
+    const video = videoRef.value
+    if (!video) {
+      throw new Error('预览未就绪')
+    }
+    video.srcObject = stream
+    await video.play()
+    lastScanAt = 0
+    scanLocked = false
+    scanRaf = requestAnimationFrame(tickCameraScan)
+  }
+  catch (e: any) {
+    stopCamera()
+    toast.add({
+      color: 'error',
+      title: '无法打开摄像头',
+      description: e?.message || String(e),
+    })
+  }
+  finally {
+    cameraStarting.value = false
+  }
+}
+
+async function toggleCamera() {
+  if (cameraOn.value) {
+    stopCamera()
+    return
+  }
+  await startCamera()
 }
 
 async function onGenerate() {
@@ -128,6 +240,7 @@ async function takeImageFile(file: File | null | undefined) {
     return
   }
 
+  stopCamera()
   revokePreviewUrl()
   decodeResult.value = ''
   sourceName.value = file.name
@@ -181,7 +294,14 @@ async function onCopyDecodeText() {
   }
 }
 
+watch(tab, (next) => {
+  if (next !== 'decode') {
+    stopCamera()
+  }
+})
+
 onUnmounted(() => {
+  stopCamera()
   revokePreviewUrl()
 })
 </script>
@@ -193,7 +313,7 @@ onUnmounted(() => {
         二维码
       </h1>
       <p class="qr__hint">
-        本地生成与解码 — 文本与图片不出设备。
+        本地生成与解码 — 文本与图片不出设备；解码支持相册与摄像头。
       </p>
     </header>
 
@@ -345,6 +465,46 @@ onUnmounted(() => {
         </span>
       </button>
 
+      <div class="qr__camera-block">
+        <div class="qr__camera-head">
+          <h2 class="qr__section-title">
+            摄像头扫码
+          </h2>
+          <UButton
+            size="sm"
+            :variant="cameraOn ? 'soft' : 'solid'"
+            :color="cameraOn ? 'neutral' : 'primary'"
+            :loading="cameraStarting"
+            @click="toggleCamera"
+          >
+            {{ cameraOn ? '关闭摄像头' : '打开摄像头' }}
+          </UButton>
+        </div>
+
+        <div
+          v-if="cameraOn"
+          class="qr__camera-stage"
+        >
+          <video
+            ref="videoRef"
+            class="qr__video"
+            playsinline
+            muted
+            autoplay
+          />
+          <div
+            class="qr__camera-frame"
+            aria-hidden="true"
+          />
+        </div>
+        <p
+          v-if="cameraHint"
+          class="qr__meta"
+        >
+          {{ cameraHint }}
+        </p>
+      </div>
+
       <p
         v-if="sourceName || decoding"
         class="qr__meta"
@@ -357,7 +517,7 @@ onUnmounted(() => {
       </p>
 
       <img
-        v-if="previewObjectUrl"
+        v-if="previewObjectUrl && !cameraOn"
         :src="previewObjectUrl"
         alt="待解码预览"
         class="qr__thumb"
@@ -645,6 +805,48 @@ onUnmounted(() => {
   border-radius: var(--radius-bubble);
   background: var(--color-paper);
   border: 1px solid var(--color-rule);
+}
+
+.qr__camera-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  min-width: 0;
+}
+
+.qr__camera-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2xs);
+}
+
+.qr__camera-stage {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  background: var(--color-stage);
+  border: 1px solid var(--color-rule);
+  aspect-ratio: 3 / 4;
+  max-height: min(60dvh, 28rem);
+}
+
+.qr__video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.qr__camera-frame {
+  pointer-events: none;
+  position: absolute;
+  inset: 18% 16%;
+  border: 2px solid color-mix(in oklab, var(--color-accent) 80%, white);
+  border-radius: var(--radius-input);
+  box-shadow: 0 0 0 999px color-mix(in oklab, var(--color-stage) 72%, transparent);
 }
 
 .qr__result-wrap :deep(textarea) {

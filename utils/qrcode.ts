@@ -87,6 +87,13 @@ function drawImageToCanvas(img: ImageBitmap | HTMLImageElement): ImageData {
   return ctx.getImageData(0, 0, width, height)
 }
 
+export function decodeQrFromImageData(imageData: ImageData): string | null {
+  const result = jsQR(imageData.data, imageData.width, imageData.height, {
+    inversionAttempts: 'attemptBoth',
+  })
+  return result?.data || null
+}
+
 export async function decodeQrFromImageFile(file: File): Promise<string> {
   if (!file.type.startsWith('image/')) {
     throw new Error('请选择图片文件')
@@ -98,17 +105,63 @@ export async function decodeQrFromImageFile(file: File): Promise<string> {
   const bitmap = await createImageBitmap(file)
   try {
     const imageData = drawImageToCanvas(bitmap)
-    const result = jsQR(imageData.data, imageData.width, imageData.height, {
-      inversionAttempts: 'attemptBoth',
-    })
-    if (!result?.data) {
+    const text = decodeQrFromImageData(imageData)
+    if (!text) {
       throw new Error('未识别到二维码')
     }
-    return result.data
+    return text
   }
   finally {
     bitmap.close()
   }
+}
+
+export function captureVideoFrame(video: HTMLVideoElement): ImageData | null {
+  const width = video.videoWidth
+  const height = video.videoHeight
+  if (!width || !height) {
+    return null
+  }
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  if (!ctx) {
+    return null
+  }
+  ctx.drawImage(video, 0, 0, width, height)
+  return ctx.getImageData(0, 0, width, height)
+}
+
+export async function openQrCameraStream(): Promise<MediaStream> {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new Error('当前环境不支持摄像头')
+  }
+  try {
+    return await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+    })
+  }
+  catch (e: any) {
+    if (e?.name === 'NotAllowedError' || e?.name === 'PermissionDeniedError') {
+      throw new Error('摄像头权限被拒绝')
+    }
+    if (e?.name === 'NotFoundError' || e?.name === 'DevicesNotFoundError') {
+      throw new Error('未找到可用摄像头')
+    }
+    throw new Error(e?.message || '无法打开摄像头')
+  }
+}
+
+export function stopMediaStream(stream: MediaStream | null | undefined) {
+  stream?.getTracks().forEach((track) => {
+    track.stop()
+  })
 }
 
 export async function copyQrText(text: string): Promise<void> {
