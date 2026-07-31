@@ -1,8 +1,6 @@
 <script lang="ts" setup>
 import type { QrEccLevel, QrSizeKey } from '~/utils/qrcode'
 import {
-  QR_ECC_OPTIONS,
-  QR_SIZE_OPTIONS,
   captureVideoFrame,
   copyPngDataUrl,
   copyQrText,
@@ -11,6 +9,8 @@ import {
   downloadDataUrl,
   generateQrDataUrl,
   openQrCameraStream,
+  QR_ECC_OPTIONS,
+  QR_SIZE_OPTIONS,
   stopMediaStream,
 } from '~/utils/qrcode'
 
