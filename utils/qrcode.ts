@@ -1,5 +1,5 @@
-import QRCode from 'qrcode'
 import jsQR from 'jsqr'
+import QRCode from 'qrcode'
 
 export type QrSizeKey = 'sm' | 'md' | 'lg'
 export type QrEccLevel = 'L' | 'M' | 'Q' | 'H'
@@ -94,15 +94,15 @@ export function decodeQrFromImageData(imageData: ImageData): string | null {
   return result?.data || null
 }
 
-export async function decodeQrFromImageFile(file: File): Promise<string> {
-  if (!file.type.startsWith('image/')) {
+export async function decodeQrFromImageBlob(blob: Blob): Promise<string> {
+  if (blob.type && !blob.type.startsWith('image/')) {
     throw new Error('请选择图片文件')
   }
-  if (file.size > QR_MAX_IMAGE_BYTES) {
+  if (blob.size > QR_MAX_IMAGE_BYTES) {
     throw new Error('图片过大（上限 10MB）')
   }
 
-  const bitmap = await createImageBitmap(file)
+  const bitmap = await createImageBitmap(blob)
   try {
     const imageData = drawImageToCanvas(bitmap)
     const text = decodeQrFromImageData(imageData)
@@ -114,6 +114,69 @@ export async function decodeQrFromImageFile(file: File): Promise<string> {
   finally {
     bitmap.close()
   }
+}
+
+export async function decodeQrFromImageFile(file: File): Promise<string> {
+  if (!file.type.startsWith('image/')) {
+    throw new Error('请选择图片文件')
+  }
+  return decodeQrFromImageBlob(file)
+}
+
+function assertHttpImageUrl(raw: string): string {
+  const trimmed = raw.trim()
+  if (!trimmed) {
+    throw new Error('请输入图片网址')
+  }
+  let parsed: URL
+  try {
+    parsed = new URL(trimmed)
+  }
+  catch {
+    throw new Error('图片网址格式无效')
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('仅支持 http / https 图片网址')
+  }
+  return parsed.href
+}
+
+/**
+ * 拉取远程图片并解码。先直连；若 CORS 失败则走同源代理 `/api/qrcode/image`。
+ */
+export async function decodeQrFromImageUrl(rawUrl: string): Promise<{
+  text: string
+  blob: Blob
+  sourceUrl: string
+}> {
+  const sourceUrl = assertHttpImageUrl(rawUrl)
+
+  async function loadBlob(fetchUrl: string): Promise<Blob> {
+    const res = await fetch(fetchUrl)
+    if (!res.ok) {
+      throw new Error(`获取图片失败（${res.status}）`)
+    }
+    const blob = await res.blob()
+    if (blob.size > QR_MAX_IMAGE_BYTES) {
+      throw new Error('图片过大（上限 10MB）')
+    }
+    if (blob.type && !blob.type.startsWith('image/') && blob.type !== 'application/octet-stream') {
+      throw new Error('网址不是图片')
+    }
+    return blob
+  }
+
+  let blob: Blob
+  try {
+    blob = await loadBlob(sourceUrl)
+  }
+  catch {
+    const proxy = `/api/qrcode/image?url=${encodeURIComponent(sourceUrl)}`
+    blob = await loadBlob(proxy)
+  }
+
+  const text = await decodeQrFromImageBlob(blob)
+  return { text, blob, sourceUrl }
 }
 
 export function captureVideoFrame(video: HTMLVideoElement): ImageData | null {

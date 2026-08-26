@@ -20,8 +20,15 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: '记录不存在' })
   }
 
+  // 服务端调 r2-worker 可能被 Bot 防护拦截；客户端会先尝试 deleteR2。
+  // 这里再尽力删一次，失败不阻断 D1 删除，避免记录永远删不掉。
   if (row.kind === 'file' && row.r2_key?.startsWith(RECORDS_R2_PREFIX)) {
-    await deleteR2ObjectOnRemote(row.r2_key)
+    try {
+      await deleteR2ObjectOnRemote(row.r2_key)
+    }
+    catch (e: any) {
+      console.warn('[records.delete] R2 删除失败，继续删库记录', row.r2_key, e?.message || e)
+    }
   }
 
   const del = await db.prepare('DELETE FROM records WHERE id = ?').bind(id).run()

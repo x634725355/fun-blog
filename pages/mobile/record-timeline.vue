@@ -147,6 +147,17 @@ async function submitFile() {
 
 async function removeRow(row: MobileRecordItem) {
   try {
+    if (row.kind === 'file' && row.r2_key?.startsWith(RECORDS_R2_PREFIX)) {
+      try {
+        await deleteR2(row.r2_key)
+      }
+      catch (e: any) {
+        const status = e?.response?.status ?? e?.statusCode ?? e?.status
+        if (status !== 404) {
+          console.warn('[record-timeline] R2 删除失败，继续删记录', row.r2_key, e)
+        }
+      }
+    }
     await $fetch(`/api/records/${row.id}`, { method: 'DELETE' })
     items.value = items.value.filter(r => r.id !== row.id)
     toast.add({ color: 'primary', title: '已删除' })

@@ -6,6 +6,7 @@ import {
   copyQrText,
   decodeQrFromImageData,
   decodeQrFromImageFile,
+  decodeQrFromImageUrl,
   downloadDataUrl,
   generateQrDataUrl,
   openQrCameraStream,
@@ -32,6 +33,7 @@ const decoding = ref(false)
 const sourceName = ref('')
 const previewObjectUrl = ref('')
 const decodeResult = ref('')
+const imageUrlInput = ref('')
 const cameraOn = ref(false)
 const cameraStarting = ref(false)
 const cameraHint = ref('')
@@ -307,6 +309,39 @@ async function onDrop(e: DragEvent) {
   await takeImageFile(e.dataTransfer?.files?.item(0))
 }
 
+async function onDecodeFromUrl() {
+  const url = imageUrlInput.value.trim()
+  if (!url) {
+    toast.add({ color: 'warning', title: '请输入图片网址' })
+    return
+  }
+
+  stopCamera()
+  revokePreviewUrl()
+  decodeResult.value = ''
+  sourceName.value = url
+  decoding.value = true
+
+  try {
+    const { text, blob, sourceUrl } = await decodeQrFromImageUrl(url)
+    previewObjectUrl.value = URL.createObjectURL(blob)
+    decodeResult.value = text
+    sourceName.value = sourceUrl
+    toast.add({ color: 'primary', title: '解码成功' })
+  }
+  catch (e: any) {
+    decodeResult.value = ''
+    toast.add({
+      color: 'error',
+      title: '网址解码失败',
+      description: e?.message || '无法获取或识别二维码',
+    })
+  }
+  finally {
+    decoding.value = false
+  }
+}
+
 async function onCopyDecodeText() {
   if (!decodeResult.value) {
     toast.add({ color: 'warning', title: '暂无解码结果' })
@@ -511,6 +546,36 @@ onUnmounted(() => {
           也可拖放图片到这里
         </span>
       </button>
+
+      <div class="qr__url-block">
+        <h2 class="qr__section-title">
+          图片网址
+        </h2>
+        <UInput
+          v-model="imageUrlInput"
+          type="url"
+          inputmode="url"
+          autocomplete="url"
+          placeholder="https://example.com/qr.png"
+          size="lg"
+          :disabled="decoding"
+          @keydown.enter.prevent="onDecodeFromUrl"
+        />
+        <UButton
+          block
+          size="lg"
+          variant="soft"
+          icon="i-heroicons-link"
+          :loading="decoding"
+          :disabled="!imageUrlInput.trim()"
+          @click="onDecodeFromUrl"
+        >
+          获取并解析
+        </UButton>
+        <p class="qr__meta">
+          直连失败（跨域）时会经本站代理拉取。
+        </p>
+      </div>
 
       <div class="qr__camera-block">
         <div class="qr__camera-head">
@@ -866,6 +931,15 @@ onUnmounted(() => {
   flex-direction: column;
   gap: var(--space-2xs);
   min-width: 0;
+}
+
+.qr__url-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  min-width: 0;
+  padding-top: var(--space-2xs);
+  border-top: 1px dashed var(--color-rule);
 }
 
 .qr__camera-head {
